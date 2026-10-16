@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Well Do You Know Me? 😌</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #fce4ec, #e1bee7);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    margin: 0;
+}
+
+.game {
+    background: white;
+    width: 100%;
+    max-width: 440px;
+    padding: 26px 22px;
+    border-radius: 24px;
+    text-align: center;
+    box-shadow: 0 10px 35px #00000018;
+    animation: appear .5s ease;
+}
+
+@keyframes appear {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+h1 { color: #9c27b0; font-size: 27px; }
+
+.heart { font-size: 35px; }
+
+#progress { color: #888; font-size: 13px; }
+
+.progress-bg {
+    height: 7px;
+    background: #f3e5f5;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+#progressBar {
+    height: 100%;
+    width: 0;
+    background: #ba68c8;
+    transition: width .35s ease;
+}
+
+#question {
+    font-size: 19px;
+    font-weight: bold;
+    line-height: 1.5;
+    margin: 25px 0;
+}
+
+button {
+    background: #9c27b0;
+    color: white;
+    border: none;
+    padding: 13px 17px;
+    margin: 6px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 15px;
+    transition: transform .15s, background .15s;
+}
+
+button:hover {
+    background: #7b1fa2;
+    transform: scale(1.03);
+}
+
+button:disabled { cursor: default; }
+
+.option {
+    display: block;
+    width: 100%;
+    margin: 9px 0;
+    background: #f3e5f5;
+    color: #6a1b9a;
+}
+
+.option:hover { background: #e1bee7; }
+
+input, textarea {
+    width: 100%;
+    padding: 13px;
+    border: 2px solid #e1bee7;
+    border-radius: 10px;
+    font-size: 15px;
+    margin: 10px 0;
+    font-family: inherit;
+}
+
+textarea { resize: vertical; }
+
+#message {
+    color: #9c27b0;
+    font-weight: bold;
+    line-height: 1.5;
+    margin-top: 18px;
+}
+
+.hidden { display: none !important; }
+
+#next { margin-top: 15px; }
+
+#noteArea { text-align: left; }
+
+#noteArea label { font-weight: bold; }
+
+#noteArea p { font-size: 13px; color: #777; }
+
+#finish h2 { color: #9c27b0; }
+
+#status { font-size: 14px; line-height: 1.5; }
+
+#results { text-align: left; }
+
+.result {
+    background: #faf0fc;
+    padding: 10px;
+    border-radius: 10px;
+    margin: 8px 0;
+    overflow-wrap: anywhere;
+}
+
+.confetti { font-size: 30px; }
+
+/* Floating hearts and confetti */
+.floating-heart {
+    position: fixed;
+    bottom: -40px;
+    font-size: 24px;
+    pointer-events: none;
+    z-index: 9999;
+    animation: floatUp 3s ease-out forwards;
+}
+
+.confetti-piece {
+    position: fixed;
+    top: -20px;
+    width: 9px;
+    height: 14px;
+    pointer-events: none;
+    z-index: 9999;
+    animation: fallDown 3s linear forwards;
+}
+
+@keyframes floatUp {
+    0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-100vh) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+@keyframes fallDown {
+    0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(110vh) rotate(720deg);
+        opacity: 0;
+    }
+}
+</style>
+</head>
+
+<body>
+<div class="game">
+    <div class="heart">💗</div>
+    <h1>How Well Do You Know Me?</h1>
+    <p id="progress">Ready? Let's find out 👀</p>
+
+    <div class="progress-bg">
+        <div id="progressBar"></div>
+    </div>
+
+    <div id="quiz">
+        <p id="question">Think you know me? Prove it. No cheating! 😂</p>
+        <div id="answers"></div>
+
+        <div id="textArea" class="hidden">
+            <input id="writtenAnswer" type="text"
+                   placeholder="Be honest... ">
+            <button onclick="submitText()">Submit answer</button>
+        </div>
+
+        <div id="noteArea" class="hidden">
+            <label for="friendNote">Your personal note to me 💌</label>
+            <p>Say whatever is on your mind. A sweet message, a confession, advice... your choice.</p>
+            <textarea id="friendNote" rows="5"
+                      placeholder="Dear you..."></textarea>
+            <button onclick="submitNote()">Send my note 💌</button>
+        </div>
+
+        <p id="message" aria-live="polite"></p>
+        <button id="next" class="hidden" onclick="nextQuestion()">Next ➜</button>
+    </div>
+
+    <div id="finish" class="hidden">
+        <div class="confetti">🎉 💗 🎉</div>
+        <h2>You made it!</h2>
+        <p id="finalMessage"></p>
+        <p id="status" aria-live="polite"></p>
+        <div id="results"></div>
+        <button id="retry" onclick="restartGame()">Play again 🔄</button>
+    </div>
+</div>
+
+<script>
+const FORM_ENDPOINT = "https://formspree.io/f/xrperdwl";
+
+const questions = [
+    {
+        type: "yesno",
+        q: "Would you trust me with your deepest secrets?",
+        options: ["Yes", "No"],
+        reactions: {
+            Yes: "Obviously, it already happenned,Imma keep 'em safe.Protect mine too 🤞😂",
+            No: "EXCUSE ME?! After everything we've been through? 😭"
+        }
+    },
+    {
+        type: "choice",
+        q: "What do you think I enjoy most?",
+        options: [
+            "Sleeping 😴", "Eating 🍟",
+            "Having my own peace 🎧", "Talking to people 🗣️"
+        ],
+        reactions: [
+            "So you think I sleep too much😑💔",
+            "Who doesn't like food😂",
+            "You might actually know me. 🤭",
+            "Oh, so you think I'm a chatterbox? 😭"
+        ]
+    },
+    {
+        type: "yesno",
+        q: "Do you think I'm an overthinker?",
+        options: ["Yes", "No"],
+        reactions: {
+            Yes: "You actually have no proof though 😂",
+            No: "The delusion is strong with this one.😌"
+        }
+    },
+    {
+        type: "choice",
+        q: "If I suddenly went quiet, what would you assume?",
+        options: [
+            "I'm sleeping 😴", "I'm overthinking 🤯",
+            "I need personal space 🎧", "I'm plotting something 😈"
+        ],
+        reactions: [
+            "Sleep is a reasonable explanation. 😂",
+            "You still have no proof tho!!!.",
+            "But it's okay for you to check on me😊",
+            "So you think I'm a villain?"
+        ]
+    },
+    {
+        type: "yesno",
+        q: "Do you think I'm a good friend?",
+        options: ["Yes", "No"],
+        reactions: {
+            Yes: "Is that really sincere. 🥹",
+            No: "Wow. We need to schedule a friendship meeting. 😭"
+        }
+    },
+    {
+        type: "choice",
+        q: "What's my biggest weakness? YOU choose. 😂",
+        options: [
+            "Overthinking 🤯", "Food 🍕",
+            "Being too emotional 🥹", "Procrastination.."
+        ],
+        reactions: [
+            "I'm trying my best to stop, I swear🥲",
+            "Don't judge me and my food. 😂",
+            "I guess we all need some emotional support😭",
+            "I'll do this question later.🤷‍♀️"
+        ]
+    },
+    {
+        type: "written",
+        q: "Bonus question: Describe me in ONE word."
+    },
+    {
+        type: "written",
+        q: "What's one thing you think I should never change about myself?"
+    },
+    {
+        type: "written",
+        q: "What's something you think I don't realize about myself?"
+    },
+    {
+        type: "written",
+        q: "Final question: What's something that you genuinely like and dislike about me?(write both)"
+    },
+    {
+        type: "note",
+        q: "One last thing... leave me a little note 💌"
+    }
+];
+
+let current = 0;
+let answered = false;
+let responses = [];
+
+const $ = id => document.getElementById(id);
+
+function showQuestion() {
+    answered = false;
+    const item = questions[current];
+
+    $("progress").textContent =
+        "Question " + (current + 1) + " of " + questions.length;
+    $("progressBar").style.width =
+        ((current + 1) / questions.length * 100) + "%";
+
+    $("question").textContent = item.q;
+    $("message").textContent = "";
+    $("answers").innerHTML = "";
+    $("next").classList.add("hidden");
+    $("textArea").classList.add("hidden");
+    $("noteArea").classList.add("hidden");
+
+    if (item.type === "written") {
+        $("textArea").classList.remove("hidden");
+        $("writtenAnswer").value = "";
+        $("writtenAnswer").placeholder = "Be honest...";
+        return;
+    }
+
+    if (item.type === "note") {
+        $("noteArea").classList.remove("hidden");
+        $("friendNote").value = "";
+        return;
+    }
+
+    item.options.forEach((option, index) => {
+        const button = document.createElement("button");
+        button.textContent = option;
+        button.className = "option";
+        button.onclick = () => chooseAnswer(option, index);
+        $("answers").appendChild(button);
+    });
+}
+
+function chooseAnswer(option, index) {
+    const item = questions[current];
+
+    const reaction = item.type === "yesno"
+        ? item.reactions[option]
+        : item.reactions[index];
+
+    const existing = responses.findIndex(
+        response => response.question === item.q
+    );
+
+    if (existing !== -1) {
+        responses[existing].answer = option;
+    } else {
+        responses.push({
+            question: item.q,
+            answer: option
+        });
+    }
+
+    answered = true;
+
+    $("message").textContent = reaction;
+    $("next").classList.remove("hidden");
+
+    document.querySelectorAll(".option").forEach(button => {
+        const selected = button.textContent === option;
+
+        button.style.background = selected ? "#9c27b0" : "#f3e5f5";
+        button.style.color = selected ? "white" : "#6a1b9a";
+    });
+}
+
+
+function submitText() {
+    if (answered) return;
+
+    const answer = $("writtenAnswer").value.trim();
+
+    if (!answer) {
+        $("message").textContent =
+            "You can't escape the question that easily. 😂";
+        return;
+    }
+
+    answered = true;
+    responses.push({
+        question: questions[current].q,
+        answer: answer
+    });
+
+    $("message").textContent =
+        "Interesting answer...😂";
+    $("next").classList.remove("hidden");
+}
+
+function submitNote() {
+    if (answered) return;
+
+    const note = $("friendNote").value.trim();
+
+    if (!note) {
+        $("message").textContent =
+            "Leaving without a note? At least say something! 😭💌";
+        return;
+    }
+
+    answered = true;
+    responses.push({
+        question: questions[current].q,
+        answer: note
+    });
+
+    $("message").textContent =
+        "Your note is ready. Let's send everything! 💗";
+    $("next").textContent = "Finish & send 💌";
+    $("next").classList.remove("hidden");
+}
+
+async function nextQuestion() {
+    if (current < questions.length - 1) {
+        current++;
+        $("next").textContent = "Next ➜";
+        showQuestion();
+        return;
+    }
+
+    $("quiz").classList.add("hidden");
+    $("finish").classList.remove("hidden");
+    $("progress").textContent = "Completed! 🎉";
+    $("progressBar").style.width = "100%";
+    $("finalMessage").textContent =
+        "You answered every question! Thank you for taking the time. 💗";
+    $("status").textContent = "Sending your answers and note...";
+    $("retry").disabled = true;
+
+    const formData = new FormData();
+
+    formData.append("_subject", "New quiz answers and a personal note 💌");
+    formData.append("Game", "How Well Do You Know Me?");
+    responses.forEach((item, index) => {
+        formData.append(
+            "Answer " + (index + 1) + ": " + item.question,
+            item.answer
+        );
+    });
+
+    try {
+        const response = await fetch(FORM_ENDPOINT, {
+            method: "POST",
+            body: formData,
+            headers: { "Accept": "application/json" }
+        });
+
+        if (!response.ok) {
+            throw new Error("Submission failed");
+        }
+
+        $("status").textContent =
+            "Your answers and note have been sent! 💌 Thank you!";
+            launchCelebration();
+    } catch (error) {
+        $("status").textContent =
+            "We couldn't confirm delivery. Please try again before leaving.";
+        const retryButton = document.createElement("button");
+        retryButton.textContent = "Try sending again";
+        retryButton.onclick = () => nextQuestion();
+        $("status").appendChild(document.createElement("br"));
+        $("status").appendChild(retryButton);
+    } finally {
+        $("retry").disabled = false;
+    }
+}
+
+function restartGame() {
+    current = 0;
+    answered = false;
+    responses = [];
+    $("quiz").classList.remove("hidden");
+    $("finish").classList.add("hidden");
+    $("next").textContent = "Next ➜";
+    showQuestion();
+}
+
+showQuestion();
+
+function launchCelebration() {
+    const hearts = ["💗", "💖", "💕", "💜", "❤️"];
+    const colors = ["#ff4d88", "#a855f7", "#ffd166", "#ff69b4"];
+
+    // Floating hearts
+    for (let i = 0; i < 18; i++) {
+        setTimeout(() => {
+            const heart = document.createElement("div");
+            heart.className = "floating-heart";
+            heart.textContent = hearts[Math.floor(Math.random() * hearts.length)];
+            heart.style.left = Math.random() * 100 + "vw";
+            document.body.appendChild(heart);
+
+            setTimeout(() => heart.remove(), 3000);
+        }, i * 150);
+    }
+
+    // Falling confetti
+    for (let i = 0; i < 70; i++) {
+        setTimeout(() => {
+            const piece = document.createElement("div");
+            piece.className = "confetti-piece";
+            piece.style.left = Math.random() * 100 + "vw";
+            piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            piece.style.transform = `rotate(${Math.random() * 360}deg)`;
+            document.body.appendChild(piece);
+
+            setTimeout(() => piece.remove(), 3000);
+        }, i * 35);
+    }
+}
+</script>
+</body>
+</html>
